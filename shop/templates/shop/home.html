@@ -1,0 +1,21 @@
+<h1>Главная страница</h1>
+
+<ul>
+    <li><a href="/catalog/">Каталог</a></li>
+    <li><a href="/cart/">Корзина</a></li>
+    <li><a href="/author/">Об авторе</a></li>
+    <li><a href="/about/">О магазине</a></li>
+</ul>
+
+<hr>
+
+{% if user.is_authenticated %}
+
+<form method="post" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button type="submit">Выйти</button>
+</form>
+
+{% else %}
+    <a href="{% url 'login' %}">Войти</a>
+{% endif %}

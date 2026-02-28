@@ -1,0 +1,38 @@
+<h1>Каталог товаров</h1>
+
+<form method="get">
+    <input type="text" name="search" placeholder="Поиск">
+
+    <select name="category">
+        <option value="">Все категории</option>
+        {% for category in categories %}
+            <option value="{{ category.id }}">{{ category.name }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="manufacturer">
+        <option value="">Все производители</option>
+        {% for manufacturer in manufacturers %}
+            <option value="{{ manufacturer.id }}">{{ manufacturer.name }}</option>
+        {% endfor %}
+    </select>
+
+    <button type="submit">Фильтр</button>
+</form>
+
+<hr>
+
+{% for product in products %}
+    <div>
+        <h3>
+            <a href="{% url 'product_detail' product.id %}">
+                {{ product.name }}
+            </a>
+        </h3>
+        <p>{{ product.price }} BYN</p>
+
+        {% if user.is_authenticated %}
+            <a href="{% url 'add_to_cart' product.id %}">Добавить в корзину</a>
+        {% endif %}
+    </div>
+{% endfor %}
