@@ -58,7 +58,7 @@ def add_to_cart(request, product_id):
     cart_item, created = CartItem.objects.get_or_create(
         cart=cart,
         product=product,
-        defaults={'quantity': 1}   # ← ВОТ ЭТО ГЛАВНОЕ
+        defaults={'quantity': 1} 
     )
 
     if not created:
