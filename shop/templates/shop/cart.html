@@ -31,4 +31,10 @@
 {% endfor %}
 </table>
 
+{% if items %}
+    <p>
+        <a href="{% url 'checkout' %}">Оформить заказ</a>
+    </p>
+{% endif %}
+
 <h3>Общая стоимость: {{ total_price }}</h3>

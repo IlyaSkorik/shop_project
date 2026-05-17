@@ -1,0 +1,48 @@
+<h1>Оформление заказа</h1>
+
+{% if messages %}
+    {% for message in messages %}
+        <p>{{ message }}</p>
+    {% endfor %}
+{% endif %}
+
+<h2>Состав заказа</h2>
+
+<table border="1">
+    <tr>
+        <th>Товар</th>
+        <th>Количество</th>
+        <th>Цена</th>
+        <th>Сумма</th>
+    </tr>
+    {% for item in items %}
+        <tr>
+            <td>{{ item.product.name }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.product.price }} BYN</td>
+            <td>{{ item.total_price }} BYN</td>
+        </tr>
+    {% endfor %}
+</table>
+
+<h3>Итого: {{ total_price }} BYN</h3>
+
+<form method="post">
+    {% csrf_token %}
+
+    <p>
+        <label for="email">Email для отправки чека:</label><br>
+        <input type="email" id="email" name="email" value="{{ default_email }}" required>
+    </p>
+
+    <p>
+        <label for="shipping_address">Адрес доставки:</label><br>
+        <textarea id="shipping_address" name="shipping_address" rows="4" cols="50" required></textarea>
+    </p>
+
+    <button type="submit">Подтвердить заказ</button>
+</form>
+
+<p>
+    <a href="{% url 'cart' %}">Вернуться в корзину</a>
+</p>
