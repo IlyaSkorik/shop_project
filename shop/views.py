@@ -10,8 +10,18 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from openpyxl import Workbook
 from openpyxl.styles import Font
+from rest_framework import permissions, viewsets
 
 from .models import Product, Category, Manufacturer, Cart, CartItem, Order, OrderItem
+from .serializers import (
+    CartItemSerializer,
+    CartSerializer,
+    CategorySerializer,
+    ManufacturerSerializer,
+    OrderItemSerializer,
+    OrderSerializer,
+    ProductSerializer,
+)
 
 def home_view(request):
     return render(request, 'shop/home.html')
@@ -236,3 +246,75 @@ def checkout(request):
         "total_price": cart.total_price(),
         "default_email": request.user.email,
     })
+
+
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class ManufacturerViewSet(viewsets.ModelViewSet):
+    queryset = Manufacturer.objects.all()
+    serializer_class = ManufacturerSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class ProductViewSet(viewsets.ModelViewSet):
+    queryset = Product.objects.select_related("category", "manufacturer")
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class CartViewSet(viewsets.ModelViewSet):
+    serializer_class = CartSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = Cart.objects.prefetch_related("items__product").select_related("user")
+        if self.request.user.is_staff:
+            return queryset
+        return queryset.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class CartItemViewSet(viewsets.ModelViewSet):
+    serializer_class = CartItemSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = CartItem.objects.select_related("cart__user", "product")
+        if self.request.user.is_staff:
+            return queryset
+        return queryset.filter(cart__user=self.request.user)
+
+
+class OrderViewSet(viewsets.ModelViewSet):
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = Order.objects.prefetch_related("items__product").select_related("user")
+        if self.request.user.is_staff:
+            return queryset
+        return queryset.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user, total_price=0)
+
+
+class OrderItemViewSet(viewsets.ModelViewSet):
+    serializer_class = OrderItemSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = OrderItem.objects.select_related("order__user", "product")
+        if self.request.user.is_staff:
+            return queryset
+        return queryset.filter(order__user=self.request.user)
+
+    def perform_create(self, serializer):
+        product = serializer.validated_data["product"]
+        serializer.save(product_name=product.name, price=product.price)
