@@ -2,15 +2,20 @@ from io import BytesIO
 
 from django.conf import settings
 from django.core.mail import EmailMessage
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.views.decorators.csrf import ensure_csrf_cookie
 from openpyxl import Workbook
 from openpyxl.styles import Font
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework import permissions, viewsets
+from rest_framework.response import Response
 
 from .models import Product, Category, Manufacturer, Cart, CartItem, Order, OrderItem
 from .serializers import (
@@ -23,8 +28,14 @@ from .serializers import (
     ProductSerializer,
 )
 
+@ensure_csrf_cookie
 def home_view(request):
-    return render(request, 'shop/home.html')
+    popular_products = Product.objects.select_related("category", "manufacturer").order_by("-id")[:6]
+    categories = Category.objects.all()
+    return render(request, 'shop/home.html', {
+        'popular_products': popular_products,
+        'categories': categories,
+    })
 
 def author_view(request):
     return HttpResponse("Сайт разработал: Скорик Илья, группа 87ТП")
@@ -33,8 +44,9 @@ def about_view(request):
     return HttpResponse('Добро пожаловать в хобби-гипермаркет "Леонард"')
 
 
+@ensure_csrf_cookie
 def product_list(request):
-    products = Product.objects.all()
+    products = Product.objects.select_related("category", "manufacturer").order_by("name")
     categories = Category.objects.all()
     manufacturers = Manufacturer.objects.all()
 
@@ -54,14 +66,26 @@ def product_list(request):
             Q(description__icontains=search_query)
         )
 
+    paginator = Paginator(products, 9)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
+
     context = {
-        'products': products,
+        'products': page_obj,
+        'page_obj': page_obj,
         'categories': categories,
-        'manufacturers': manufacturers
+        'manufacturers': manufacturers,
+        'selected_category': category_id or '',
+        'selected_manufacturer': manufacturer_id or '',
+        'search_query': search_query or '',
+        'query_string': query_params.urlencode(),
     }
 
     return render(request, 'shop/product_list.html', context)
 
+@ensure_csrf_cookie
 def product_detail(request, pk):
     product = get_object_or_404(Product, pk=pk)
     return render(request, 'shop/product_detail.html', {'product': product})
@@ -189,6 +213,40 @@ def send_order_receipt(order):
     email.send()
 
 
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def api_add_to_cart(request):
+    product_id = request.data.get("product_id")
+    quantity = int(request.data.get("quantity", 1))
+
+    if quantity < 1:
+        return Response({"detail": "Количество должно быть больше нуля."}, status=status.HTTP_400_BAD_REQUEST)
+
+    product = get_object_or_404(Product, id=product_id)
+    if product.stock_quantity < 1:
+        return Response({"detail": "Товара нет в наличии."}, status=status.HTTP_400_BAD_REQUEST)
+
+    cart, _ = Cart.objects.get_or_create(user=request.user)
+    cart_item, created = CartItem.objects.get_or_create(
+        cart=cart,
+        product=product,
+        defaults={"quantity": 0},
+    )
+
+    if cart_item.quantity + quantity > product.stock_quantity:
+        return Response({"detail": "Недостаточно товара на складе."}, status=status.HTTP_400_BAD_REQUEST)
+
+    cart_item.quantity += quantity
+    cart_item.save()
+
+    return Response({
+        "detail": "Товар добавлен в корзину.",
+        "item_id": cart_item.id,
+        "quantity": cart_item.quantity,
+        "created": created,
+    })
+
+
 @login_required
 def checkout(request):
     cart, created = Cart.objects.get_or_create(user=request.user)
@@ -251,19 +309,36 @@ def checkout(request):
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 
 class ManufacturerViewSet(viewsets.ModelViewSet):
     queryset = Manufacturer.objects.all()
     serializer_class = ManufacturerSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.select_related("category", "manufacturer")
     serializer_class = ProductSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        queryset = Product.objects.select_related("category", "manufacturer").order_by("name")
+        category_id = self.request.query_params.get("category")
+        manufacturer_id = self.request.query_params.get("manufacturer")
+        search_query = self.request.query_params.get("search")
+
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+        if manufacturer_id:
+            queryset = queryset.filter(manufacturer_id=manufacturer_id)
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) |
+                Q(description__icontains=search_query)
+            )
+
+        return queryset
 
 
 class CartViewSet(viewsets.ModelViewSet):

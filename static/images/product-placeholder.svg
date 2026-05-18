@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-label="Изображение товара">
+  <rect width="640" height="480" fill="#fff4e8"/>
+  <rect x="118" y="96" width="404" height="288" rx="28" fill="#ffffff" stroke="#eaded4" stroke-width="10"/>
+  <circle cx="230" cy="190" r="46" fill="#ffd166"/>
+  <path d="M158 330l112-105 76 74 54-46 82 77z" fill="#d8f1e6"/>
+  <path d="M158 330h324" stroke="#d64257" stroke-width="16" stroke-linecap="round"/>
+</svg>

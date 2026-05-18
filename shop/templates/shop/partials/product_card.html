@@ -1,0 +1,17 @@
+{% load static %}
+<article class="card product-card h-100">
+    <img src="{% if product.product_image %}{{ product.product_image.url }}{% else %}{% static 'images/product-placeholder.svg' %}{% endif %}" class="card-img-top" alt="{{ product.name }}" onerror="this.src='{% static 'images/product-placeholder.svg' %}'">
+    <div class="card-body d-flex flex-column">
+        <p class="small text-muted mb-1">{{ product.category.name }}{% if product.manufacturer.name %} · {{ product.manufacturer.name }}{% endif %}</p>
+        <h3 class="h6 card-title">{{ product.name }}</h3>
+        <p class="fw-bold price mb-3">{{ product.price }} BYN</p>
+        <div class="mt-auto d-flex gap-2">
+            <a class="btn btn-outline-dark flex-fill" href="{% url 'product_detail' product.id %}">Подробнее</a>
+            {% if product.stock_quantity > 0 %}
+                <button class="btn btn-primary js-add-to-cart" type="button" data-product-id="{{ product.id }}">В корзину</button>
+            {% else %}
+                <button class="btn btn-secondary" type="button" disabled>Нет</button>
+            {% endif %}
+        </div>
+    </div>
+</article>

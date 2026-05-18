@@ -1,21 +1,49 @@
-<h1>Главная страница</h1>
+{% extends 'base.html' %}
 
-<ul>
-    <li><a href="/catalog/">Каталог</a></li>
-    <li><a href="/cart/">Корзина</a></li>
-    <li><a href="/author/">Об авторе</a></li>
-    <li><a href="/about/">О магазине</a></li>
-</ul>
+{% block title %}АртЛавка — товары для творчества{% endblock %}
 
-<hr>
+{% block content %}
+<section class="hero">
+    <div class="container">
+        <div class="col-lg-8">
+            <p class="text-uppercase fw-semibold text-danger mb-2">Хобби-гипермаркет</p>
+            <h1 class="fw-bold mb-3">Материалы для свечей, декора и уютных творческих вечеров</h1>
+            <p class="lead text-muted mb-4">Подберите наборы, инструменты и расходники для handmade-проектов.</p>
+            <a class="btn btn-primary btn-lg" href="{% url 'product_list' %}">Перейти в каталог</a>
+        </div>
+    </div>
+</section>
 
-{% if user.is_authenticated %}
+<section class="container py-5">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-4">
+        <div>
+            <h2 class="section-title fw-bold mb-1">Популярные товары</h2>
+            <p class="text-muted mb-0">Последние добавленные позиции магазина.</p>
+        </div>
+        <a class="btn btn-outline-dark" href="{% url 'product_list' %}">Смотреть все</a>
+    </div>
 
-<form method="post" action="{% url 'logout' %}">
-    {% csrf_token %}
-    <button type="submit">Выйти</button>
-</form>
+    <div class="row g-4">
+        {% for product in popular_products %}
+            <div class="col-sm-6 col-lg-4">
+                {% include 'shop/partials/product_card.html' with product=product %}
+            </div>
+        {% empty %}
+            <div class="col-12">
+                <div class="alert alert-info">Товары пока не добавлены.</div>
+            </div>
+        {% endfor %}
+    </div>
+</section>
 
-{% else %}
-    <a href="{% url 'login' %}">Войти</a>
-{% endif %}
+<section class="container pb-5">
+    <h2 class="section-title fw-bold mb-3">Категории</h2>
+    <div class="d-flex flex-wrap gap-2">
+        {% for category in categories %}
+            <a class="category-pill" href="{% url 'product_list' %}?category={{ category.id }}">{{ category.name }}</a>
+        {% empty %}
+            <span class="text-muted">Категории появятся после заполнения базы.</span>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

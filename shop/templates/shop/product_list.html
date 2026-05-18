@@ -1,38 +1,79 @@
-<h1>Каталог товаров</h1>
+{% extends 'base.html' %}
 
-<form method="get">
-    <input type="text" name="search" placeholder="Поиск">
+{% block title %}Каталог — АртЛавка{% endblock %}
 
-    <select name="category">
-        <option value="">Все категории</option>
-        {% for category in categories %}
-            <option value="{{ category.id }}">{{ category.name }}</option>
-        {% endfor %}
-    </select>
-
-    <select name="manufacturer">
-        <option value="">Все производители</option>
-        {% for manufacturer in manufacturers %}
-            <option value="{{ manufacturer.id }}">{{ manufacturer.name }}</option>
-        {% endfor %}
-    </select>
-
-    <button type="submit">Фильтр</button>
-</form>
-
-<hr>
-
-{% for product in products %}
-    <div>
-        <h3>
-            <a href="{% url 'product_detail' product.id %}">
-                {{ product.name }}
-            </a>
-        </h3>
-        <p>{{ product.price }} BYN</p>
-
-        {% if user.is_authenticated %}
-            <a href="{% url 'add_to_cart' product.id %}">Добавить в корзину</a>
-        {% endif %}
+{% block content %}
+<div class="container py-4">
+    <div class="mb-4">
+        <h1 class="fw-bold mb-2">Каталог товаров</h1>
+        <p class="text-muted mb-0">Фильтруйте товары по категории, производителю и названию.</p>
     </div>
-{% endfor %}
+
+    <div class="row g-4">
+        <aside class="col-md-3">
+            <form class="filter-panel p-3" method="get" id="catalog-filter-form">
+                <h2 class="h5 mb-3">Фильтры</h2>
+                <div class="mb-3">
+                    <label class="form-label" for="search">Поиск</label>
+                    <input class="form-control" type="search" id="search" name="search" value="{{ search_query }}" placeholder="Например, свеча">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="category">Категория</label>
+                    <select class="form-select" id="category" name="category">
+                        <option value="">Все категории</option>
+                        {% for category in categories %}
+                            <option value="{{ category.id }}" {% if selected_category == category.id|stringformat:'s' %}selected{% endif %}>{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="manufacturer">Производитель</label>
+                    <select class="form-select" id="manufacturer" name="manufacturer">
+                        <option value="">Все производители</option>
+                        {% for manufacturer in manufacturers %}
+                            <option value="{{ manufacturer.id }}" {% if selected_manufacturer == manufacturer.id|stringformat:'s' %}selected{% endif %}>{{ manufacturer.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button class="btn btn-primary w-100" type="submit">Применить фильтры</button>
+                <a class="btn btn-link w-100 mt-2" href="{% url 'product_list' %}">Сбросить</a>
+            </form>
+        </aside>
+
+        <section class="col-md-9">
+            <div id="catalog-spinner" class="text-center py-5 d-none">
+                <div class="spinner-border text-danger" role="status">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+            </div>
+            <div id="catalog-error" class="alert alert-danger d-none" role="alert"></div>
+
+            <div class="row g-4" id="product-list" data-api-catalog="true">
+                {% for product in products %}
+                    <div class="col-sm-6 col-lg-4">
+                        {% include 'shop/partials/product_card.html' with product=product %}
+                    </div>
+                {% empty %}
+                    <div class="col-12">
+                        <div class="alert alert-info">По выбранным фильтрам товары не найдены.</div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            {% if page_obj.has_other_pages %}
+                <nav class="mt-4" aria-label="Страницы каталога">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+                            <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={% if page_obj.has_previous %}{{ page_obj.previous_page_number }}{% else %}1{% endif %}">Назад</a>
+                        </li>
+                        <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span></li>
+                        <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+                            <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={% if page_obj.has_next %}{{ page_obj.next_page_number }}{% else %}{{ page_obj.paginator.num_pages }}{% endif %}">Вперед</a>
+                        </li>
+                    </ul>
+                </nav>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}

@@ -1,40 +1,49 @@
-<h1>Моя корзина</h1>
+{% extends 'base.html' %}
 
-<table border="1">
-<tr>
-    <th>Товар</th>
-    <th>Количество</th>
-    <th>Цена</th>
-    <th>Сумма</th>
-    <th>Действие</th>
-</tr>
+{% block title %}Корзина — АртЛавка{% endblock %}
 
-{% for item in items %}
-<tr>
-    <td>{{ item.product.name }}</td>
+{% block content %}
+<div class="container py-4">
+    <h1 class="fw-bold mb-4">Моя корзина</h1>
 
-    <td>
-        <form method="post" action="{% url 'update_cart' item.id %}">
-            {% csrf_token %}
-            <input type="number" name="quantity" value="{{ item.quantity }}">
-            <button type="submit">Обновить</button>
-        </form>
-    </td>
-
-    <td>{{ item.product.price }}</td>
-    <td>{{ item.total_price }}</td>
-
-    <td>
-        <a href="{% url 'remove_from_cart' item.id %}">Удалить</a>
-    </td>
-</tr>
-{% endfor %}
-</table>
-
-{% if items %}
-    <p>
-        <a href="{% url 'checkout' %}">Оформить заказ</a>
-    </p>
-{% endif %}
-
-<h3>Общая стоимость: {{ total_price }}</h3>
+    {% if items %}
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Товар</th>
+                        <th>Количество</th>
+                        <th>Цена</th>
+                        <th>Сумма</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                        <tr>
+                            <td>{{ item.product.name }}</td>
+                            <td>
+                                <form class="d-flex gap-2" method="post" action="{% url 'update_cart' item.id %}">
+                                    {% csrf_token %}
+                                    <input class="form-control form-control-sm" type="number" min="1" max="{{ item.product.stock_quantity }}" name="quantity" value="{{ item.quantity }}">
+                                    <button class="btn btn-outline-dark btn-sm" type="submit">Обновить</button>
+                                </form>
+                            </td>
+                            <td>{{ item.product.price }} BYN</td>
+                            <td>{{ item.total_price }} BYN</td>
+                            <td><a class="btn btn-link text-danger" href="{% url 'remove_from_cart' item.id %}">Удалить</a></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <h2 class="h4 mb-0">Итого: {{ total_price }} BYN</h2>
+            <a class="btn btn-primary" href="{% url 'checkout' %}">Оформить заказ</a>
+        </div>
+    {% else %}
+        <div class="alert alert-info">Корзина пуста. Добавьте товары из каталога.</div>
+        <a class="btn btn-primary" href="{% url 'product_list' %}">Перейти в каталог</a>
+    {% endif %}
+</div>
+{% endblock %}

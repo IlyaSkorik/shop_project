@@ -26,6 +26,19 @@ class CategorySerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
     manufacturer_name = serializers.CharField(source="manufacturer.name", read_only=True)
+    image_url = serializers.SerializerMethodField()
+
+    def get_image_url(self, product):
+        if not product.product_image:
+            return ""
+
+        try:
+            url = product.product_image.url
+        except ValueError:
+            return ""
+
+        request = self.context.get("request")
+        return request.build_absolute_uri(url) if request else url
 
     class Meta:
         model = Product
@@ -40,6 +53,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "category_name",
             "manufacturer",
             "manufacturer_name",
+            "image_url",
         ]
         extra_kwargs = {
             "description": {"required": False, "allow_blank": True},

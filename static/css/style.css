@@ -1,0 +1,119 @@
+:root {
+    --brand: #d64257;
+    --brand-dark: #9f2638;
+    --ink: #252525;
+    --muted: #6b7280;
+    --paper: #fffaf6;
+    --mint: #d8f1e6;
+    --sun: #ffd166;
+}
+
+body {
+    background: #fffdf9;
+    color: var(--ink);
+}
+
+.brand-mark {
+    width: 34px;
+    height: 34px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 8px;
+    background: var(--brand);
+    color: #fff;
+}
+
+.navbar .nav-link {
+    color: #343434;
+    font-weight: 500;
+}
+
+.btn-primary {
+    --bs-btn-bg: var(--brand);
+    --bs-btn-border-color: var(--brand);
+    --bs-btn-hover-bg: var(--brand-dark);
+    --bs-btn-hover-border-color: var(--brand-dark);
+}
+
+.hero {
+    background:
+        linear-gradient(90deg, rgba(255, 250, 246, .95), rgba(255, 250, 246, .72)),
+        url("../images/craft-hero.svg") center right / auto 100% no-repeat;
+    min-height: 420px;
+    display: grid;
+    align-items: center;
+}
+
+.hero h1 {
+    max-width: 760px;
+    font-size: clamp(2.25rem, 7vw, 5rem);
+    line-height: 1;
+}
+
+.section-title {
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+}
+
+.category-pill {
+    border: 1px solid #eaded4;
+    color: var(--ink);
+    background: #fff;
+    text-decoration: none;
+    border-radius: 999px;
+    padding: .65rem 1rem;
+    transition: border-color .2s, transform .2s;
+}
+
+.category-pill:hover {
+    border-color: var(--brand);
+    transform: translateY(-1px);
+}
+
+.filter-panel {
+    background: var(--paper);
+    border: 1px solid #f0e2d5;
+    border-radius: 8px;
+}
+
+.product-card {
+    border-color: #eee2d8;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform .2s, box-shadow .2s;
+}
+
+.product-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 1rem 2rem rgba(80, 45, 33, .09);
+}
+
+.product-card img,
+.product-detail-image {
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    background: #f7eee5;
+}
+
+.price {
+    color: var(--brand-dark);
+}
+
+.stock-badge {
+    background: var(--mint);
+    color: #176146;
+}
+
+.site-footer {
+    background: #f8f1ea;
+    border-top: 1px solid #ecddd0;
+}
+
+@media (max-width: 767.98px) {
+    .hero {
+        min-height: 500px;
+        align-items: start;
+        padding-top: 3rem;
+        background-position: bottom center;
+        background-size: 115% auto;
+    }
+}
