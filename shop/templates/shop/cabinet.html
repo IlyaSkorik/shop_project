@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+
+{% block title %}Личный кабинет — АртЛавка{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+    {% if not user.is_authenticated %}
+        <div class="text-center py-5">
+            <h2 class="mb-3">Вы не вошли в систему</h2>
+            <p class="text-muted mb-4">Для доступа к личному кабинету необходимо войти.</p>
+            <a href="{% url 'login' %}" class="btn btn-primary me-2">Войти</a>
+            <a href="{% url 'register' %}" class="btn btn-outline-dark">Зарегистрироваться</a>
+        </div>
+    {% else %}
+
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 fw-bold mb-0">Личный кабинет</h1>
+        <a href="{% url 'settings' %}" class="btn btn-outline-secondary btn-sm">Настройки</a>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- Блок профиля -->
+        <div class="col-lg-4">
+            <div class="filter-panel p-4 h-100">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold"
+                         style="width:52px;height:52px;font-size:1.3rem;">
+                        {{ user.username|first|upper }}
+                    </div>
+                    <div>
+                        <div class="fw-bold">{{ user.username }}</div>
+                        <span class="badge
+                            {% if profile.role_display == 'Администратор' %}bg-danger
+                            {% elif profile.role_display == 'Менеджер' %}bg-warning text-dark
+                            {% else %}bg-secondary{% endif %}">
+                            {{ profile.role_display }}
+                        </span>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div id="profile-display">
+                    <dl class="mb-3">
+                        <dt class="text-muted small">Полное имя</dt>
+                        <dd>{{ profile.full_name|default:"—" }}</dd>
+                        <dt class="text-muted small">Телефон</dt>
+                        <dd>{{ profile.phone|default:"—" }}</dd>
+                        <dt class="text-muted small">Адрес</dt>
+                        <dd>{{ profile.address|default:"—" }}</dd>
+                        <dt class="text-muted small">Город доставки</dt>
+                        <dd>{{ profile.delivery_city|default:"—" }}</dd>
+                        <dt class="text-muted small">Любимая категория</dt>
+                        <dd>{{ profile.favorite_category|default:"—" }}</dd>
+                    </dl>
+                    <button class="btn btn-outline-primary btn-sm w-100" id="edit-profile-btn">Редактировать</button>
+                </div>
+
+                <form id="profile-form" class="d-none" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Полное имя</label>
+                        <input type="text" class="form-control form-control-sm" name="full_name" value="{{ profile.full_name }}">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Телефон</label>
+                        <input type="text" class="form-control form-control-sm" name="phone" value="{{ profile.phone }}">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Адрес</label>
+                        <textarea class="form-control form-control-sm" name="address" rows="2">{{ profile.address }}</textarea>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Город доставки</label>
+                        <input type="text" class="form-control form-control-sm" name="delivery_city" value="{{ profile.delivery_city }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Любимая категория</label>
+                        <select class="form-select form-select-sm" name="favorite_category">
+                            <option value="">—</option>
+                            {% for cat in categories %}
+                                <option value="{{ cat.id }}" {% if profile.favorite_category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm flex-fill">Сохранить</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="cancel-edit-btn">Отмена</button>
+                    </div>
+                    <div id="profile-error" class="alert alert-danger mt-2 d-none"></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Блок заказов -->
+        <div class="col-lg-8">
+            <div class="filter-panel p-4">
+                <h2 class="h5 fw-bold mb-3">Мои заказы</h2>
+
+                {% if orders %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Дата</th>
+                                    <th>Сумма</th>
+                                    <th>Адрес</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in orders %}
+                                <tr>
+                                    <td class="fw-semibold">{{ order.id }}</td>
+                                    <td>{{ order.created_at|date:"d.m.Y H:i" }}</td>
+                                    <td>{{ order.total_price }} BYN</td>
+                                    <td class="text-truncate" style="max-width:200px;">{{ order.shipping_address }}</td>
+                                    <td>
+                                        <button class="btn btn-outline-dark btn-sm"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#order-{{ order.id }}">
+                                            Подробнее
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="collapse" id="order-{{ order.id }}">
+                                    <td colspan="5">
+                                        <table class="table table-sm mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Товар</th>
+                                                    <th>Кол-во</th>
+                                                    <th>Цена</th>
+                                                    <th>Сумма</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for item in order.items.all %}
+                                                <tr>
+                                                    <td>{{ item.product_name }}</td>
+                                                    <td>{{ item.quantity }}</td>
+                                                    <td>{{ item.price }} BYN</td>
+                                                    <td>{{ item.total_price }} BYN</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info mb-0">
+                        У вас пока нет заказов. <a href="{% url 'product_list' %}">Перейти в каталог</a>.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const editBtn = document.getElementById('edit-profile-btn');
+const cancelBtn = document.getElementById('cancel-edit-btn');
+const profileDisplay = document.getElementById('profile-display');
+const profileForm = document.getElementById('profile-form');
+const profileError = document.getElementById('profile-error');
+
+if (editBtn) {
+    editBtn.addEventListener('click', () => {
+        profileDisplay.classList.add('d-none');
+        profileForm.classList.remove('d-none');
+    });
+}
+
+if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+        profileForm.classList.add('d-none');
+        profileDisplay.classList.remove('d-none');
+        profileError.classList.add('d-none');
+    });
+}
+
+if (profileForm) {
+    profileForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        profileError.classList.add('d-none');
+
+        const formData = new FormData(profileForm);
+        const body = {};
+        formData.forEach((v, k) => { if (k !== 'csrfmiddlewaretoken') body[k] = v; });
+        if (!body.favorite_category) body.favorite_category = null;
+
+        try {
+            const resp = await fetch('/api/me/', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify(body),
+            });
+
+            if (resp.status === 401 || resp.status === 403) {
+                profileError.textContent = 'Нет прав для изменения профиля.';
+                profileError.classList.remove('d-none');
+                return;
+            }
+
+            if (!resp.ok) {
+                const data = await resp.json().catch(() => ({}));
+                profileError.textContent = JSON.stringify(data);
+                profileError.classList.remove('d-none');
+                return;
+            }
+
+            showToast('Профиль сохранён.');
+            setTimeout(() => location.reload(), 800);
+        } catch {
+            profileError.textContent = 'Ошибка соединения.';
+            profileError.classList.remove('d-none');
+        }
+    });
+}
+</script>
+{% endblock %}

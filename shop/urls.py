@@ -16,7 +16,12 @@ urlpatterns = [
     path('author/', views.author_view, name='author'),
     path('about/', views.about_view, name='about'),
     path('', views.home_view, name='home'),
-    
+
+    # Аккаунт
+    path('register/', views.register_view, name='register'),
+    path('cabinet/', views.cabinet_view, name='cabinet'),
+    path('settings/', views.settings_view, name='settings'),
+
     # Каталог
     path('catalog/', views.product_list, name='product_list'),
     path('catalog/<int:pk>/', views.product_detail, name='product_detail'),
@@ -27,6 +32,9 @@ urlpatterns = [
     path('cart/update/<int:item_id>/', views.update_cart, name='update_cart'),
     path('cart/remove/<int:item_id>/', views.remove_from_cart, name='remove_from_cart'),
     path('checkout/', views.checkout, name='checkout'),
+
+    # API
     path('api/cart/add/', views.api_add_to_cart, name='api_add_to_cart'),
+    path('api/me/', views.api_me, name='api_me'),
     path('api/', include(router.urls)),
 ]

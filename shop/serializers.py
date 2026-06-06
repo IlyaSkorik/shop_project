@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
-from .models import Cart, CartItem, Category, Manufacturer, Order, OrderItem, Product
+from .models import Cart, CartItem, Category, Manufacturer, Order, OrderItem, Product, Profile
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -9,6 +9,29 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ["id", "username", "email"]
         read_only_fields = fields
+
+
+class ProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    role = serializers.SerializerMethodField()
+
+    def get_role(self, obj):
+        return obj.role_display()
+
+    class Meta:
+        model = Profile
+        fields = [
+            'username', 'email', 'role',
+            'full_name', 'phone', 'address',
+            'favorite_category', 'delivery_city',
+        ]
+
+
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ['full_name', 'phone', 'address', 'favorite_category', 'delivery_city']
 
 
 class ManufacturerSerializer(serializers.ModelSerializer):

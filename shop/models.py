@@ -3,6 +3,34 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 
 
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    full_name = models.CharField('Полное имя', max_length=200, blank=True)
+    phone = models.CharField('Телефон', max_length=20, blank=True)
+    address = models.TextField('Адрес', blank=True)
+    favorite_category = models.ForeignKey(
+        'Category',
+        verbose_name='Любимая категория',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='+'
+    )
+    delivery_city = models.CharField('Город доставки', max_length=100, blank=True)
+
+    class Meta:
+        verbose_name = 'Профиль'
+        verbose_name_plural = 'Профили'
+
+    def __str__(self):
+        return f'Профиль {self.user.username}'
+
+    def role_display(self):
+        if self.user.is_superuser:
+            return 'Администратор'
+        group = self.user.groups.first()
+        return group.name if group else 'Покупатель'
+
+
 class Manufacturer(models.Model):
     name = models.CharField(max_length=100)
     country = models.CharField(max_length=100)
