@@ -10,6 +10,8 @@ COPY . .
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+RUN chmod +x start.sh
+
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py collectstatic --noinput && python manage.py migrate --noinput && python manage.py setup_groups && gunicorn shop_project.wsgi --bind 0.0.0.0:$PORT"]
+CMD ["./start.sh"]
