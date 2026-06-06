@@ -16,7 +16,10 @@ ALLOWED_HOSTS = config(
 ).split(',')
 ALLOWED_HOSTS += ['.up.railway.app']
 
-CSRF_TRUSTED_ORIGINS = ['https://*.up.railway.app']
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.up.railway.app',
+    'https://web-production-579c2.up.railway.app',
+]
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
