@@ -1,4 +1,8 @@
+import base64
+import json
 import logging
+import urllib.error
+import urllib.request
 from io import BytesIO
 
 from django.conf import settings
@@ -280,22 +284,71 @@ def build_receipt(order):
     return receipt
 
 
+def _send_receipt_via_brevo(*, subject, body, to_email, filename, content):
+    """Отправка письма с вложением через HTTP API Brevo (порт 443)."""
+    payload = {
+        "sender": {"email": settings.DEFAULT_FROM_EMAIL, "name": "Леонард"},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "textContent": body,
+        "attachment": [{
+            "name": filename,
+            "content": base64.b64encode(content).decode("ascii"),
+        }],
+    }
+    request = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "api-key": settings.BREVO_API_KEY,
+            "content-type": "application/json",
+            "accept": "application/json",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=15) as response:
+        return 200 <= response.status < 300
+
+
 def send_order_receipt(order):
     receipt = build_receipt(order)
+    content = receipt.getvalue()
+    subject = f"Чек по заказу #{order.id}"
+    body = (
+        f"Здравствуйте, {order.user.username}!\n\n"
+        f"Ваш заказ #{order.id} оформлен.\n"
+        f"Сумма заказа: {order.total_price} BYN.\n"
+        "Чек прикреплен к письму."
+    )
+    filename = f"receipt_order_{order.id}.xlsx"
+
+    if settings.BREVO_API_KEY:
+        try:
+            sent = _send_receipt_via_brevo(
+                subject=subject, body=body, to_email=order.email,
+                filename=filename, content=content,
+            )
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            logger.warning("Brevo вернул ошибку для заказа #%s: %s %s", order.id, exc.code, detail)
+            sent = False
+        except Exception:
+            logger.exception("Ошибка отправки через Brevo для заказа #%s", order.id)
+            sent = False
+        if not sent:
+            logger.warning("Не удалось отправить чек по заказу #%s на %s", order.id, order.email)
+        return sent
+
+    # Fallback: Django SMTP/filebased backend (локальная разработка).
     email = EmailMessage(
-        subject=f"Чек по заказу #{order.id}",
-        body=(
-            f"Здравствуйте, {order.user.username}!\n\n"
-            f"Ваш заказ #{order.id} оформлен.\n"
-            f"Сумма заказа: {order.total_price} BYN.\n"
-            "Чек прикреплен к письму."
-        ),
+        subject=subject,
+        body=body,
         from_email=settings.DEFAULT_FROM_EMAIL,
         to=[order.email],
     )
     email.attach(
-        filename=f"receipt_order_{order.id}.xlsx",
-        content=receipt.getvalue(),
+        filename=filename,
+        content=content,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     sent = email.send(fail_silently=True)
