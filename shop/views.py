@@ -1,3 +1,4 @@
+import logging
 from io import BytesIO
 
 from django.conf import settings
@@ -33,6 +34,9 @@ from .serializers import (
     ProfileSerializer,
     ProfileUpdateSerializer,
 )
+
+logger = logging.getLogger(__name__)
+
 
 def register_view(request):
     if request.user.is_authenticated:
@@ -294,7 +298,10 @@ def send_order_receipt(order):
         content=receipt.getvalue(),
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    email.send()
+    sent = email.send(fail_silently=True)
+    if not sent:
+        logger.warning("Не удалось отправить чек по заказу #%s на %s", order.id, order.email)
+    return sent
 
 
 @api_view(["POST"])
