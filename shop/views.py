@@ -1,4 +1,3 @@
-import base64
 import json
 import logging
 import urllib.error
@@ -284,30 +283,69 @@ def build_receipt(order):
     return receipt
 
 
-def _send_receipt_via_brevo(*, subject, body, to_email, filename, content):
-    """Отправка письма с вложением через HTTP API Brevo (порт 443)."""
-    payload = {
-        "sender": {"email": settings.DEFAULT_FROM_EMAIL, "name": "Леонард"},
-        "to": [{"email": to_email}],
+def _encode_multipart(fields, *, file_field, filename, file_content, file_mimetype):
+    """Собирает тело multipart/form-data из текстовых полей и одного файла."""
+    boundary = "----shopprojectboundary7MA4YWxkTrZu0gW"
+    crlf = b"\r\n"
+    parts = []
+    for name, value in fields.items():
+        parts.append(b"--" + boundary.encode("ascii") + crlf)
+        parts.append(
+            f'Content-Disposition: form-data; name="{name}"'.encode("utf-8") + crlf + crlf
+        )
+        parts.append(str(value).encode("utf-8") + crlf)
+    parts.append(b"--" + boundary.encode("ascii") + crlf)
+    parts.append(
+        (
+            f'Content-Disposition: form-data; name="{file_field}"; '
+            f'filename="{filename}"'
+        ).encode("utf-8") + crlf
+    )
+    parts.append(f"Content-Type: {file_mimetype}".encode("ascii") + crlf + crlf)
+    parts.append(file_content + crlf)
+    parts.append(b"--" + boundary.encode("ascii") + b"--" + crlf)
+    body = b"".join(parts)
+    content_type = f"multipart/form-data; boundary={boundary}"
+    return body, content_type
+
+
+def _send_receipt_via_smsby(*, subject, body, to_email, filename, content):
+    """Отправка письма с вложением через API sms.by (multipart/form-data)."""
+    fields = {
+        "token": settings.SMSBY_TOKEN,
+        "sender_email": settings.DEFAULT_FROM_EMAIL,
+        "sender_name": "Леонард",
         "subject": subject,
-        "textContent": body,
-        "attachment": [{
-            "name": filename,
-            "content": base64.b64encode(content).decode("ascii"),
-        }],
+        "message": body,
+        "email": to_email,
     }
+    data, content_type = _encode_multipart(
+        fields,
+        file_field="attachment",
+        filename=filename,
+        file_content=content,
+        file_mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
     request = urllib.request.Request(
-        "https://api.brevo.com/v3/smtp/email",
-        data=json.dumps(payload).encode("utf-8"),
+        settings.SMSBY_API_URL,
+        data=data,
         headers={
-            "api-key": settings.BREVO_API_KEY,
-            "content-type": "application/json",
+            "content-type": content_type,
             "accept": "application/json",
         },
         method="POST",
     )
     with urllib.request.urlopen(request, timeout=15) as response:
-        return 200 <= response.status < 300
+        raw = response.read().decode("utf-8", errors="replace")
+    try:
+        result = json.loads(raw)
+    except ValueError:
+        logger.warning("sms.by вернул неожиданный ответ: %s", raw)
+        return False
+    if result.get("status") != "OK":
+        logger.warning("sms.by отклонил отправку: %s", raw)
+        return False
+    return True
 
 
 def send_order_receipt(order):
@@ -322,18 +360,18 @@ def send_order_receipt(order):
     )
     filename = f"receipt_order_{order.id}.xlsx"
 
-    if settings.BREVO_API_KEY:
+    if settings.SMSBY_TOKEN:
         try:
-            sent = _send_receipt_via_brevo(
+            sent = _send_receipt_via_smsby(
                 subject=subject, body=body, to_email=order.email,
                 filename=filename, content=content,
             )
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
-            logger.warning("Brevo вернул ошибку для заказа #%s: %s %s", order.id, exc.code, detail)
+            logger.warning("sms.by вернул ошибку для заказа #%s: %s %s", order.id, exc.code, detail)
             sent = False
         except Exception:
-            logger.exception("Ошибка отправки через Brevo для заказа #%s", order.id)
+            logger.exception("Ошибка отправки через sms.by для заказа #%s", order.id)
             sent = False
         if not sent:
             logger.warning("Не удалось отправить чек по заказу #%s на %s", order.id, order.email)
