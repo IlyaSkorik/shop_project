@@ -1,7 +1,4 @@
-import json
 import logging
-import urllib.error
-import urllib.request
 from io import BytesIO
 
 from django.conf import settings
@@ -283,72 +280,8 @@ def build_receipt(order):
     return receipt
 
 
-def _encode_multipart(fields, *, file_field, filename, file_content, file_mimetype):
-    """Собирает тело multipart/form-data из текстовых полей и одного файла."""
-    boundary = "----shopprojectboundary7MA4YWxkTrZu0gW"
-    crlf = b"\r\n"
-    parts = []
-    for name, value in fields.items():
-        parts.append(b"--" + boundary.encode("ascii") + crlf)
-        parts.append(
-            f'Content-Disposition: form-data; name="{name}"'.encode("utf-8") + crlf + crlf
-        )
-        parts.append(str(value).encode("utf-8") + crlf)
-    parts.append(b"--" + boundary.encode("ascii") + crlf)
-    parts.append(
-        (
-            f'Content-Disposition: form-data; name="{file_field}"; '
-            f'filename="{filename}"'
-        ).encode("utf-8") + crlf
-    )
-    parts.append(f"Content-Type: {file_mimetype}".encode("ascii") + crlf + crlf)
-    parts.append(file_content + crlf)
-    parts.append(b"--" + boundary.encode("ascii") + b"--" + crlf)
-    body = b"".join(parts)
-    content_type = f"multipart/form-data; boundary={boundary}"
-    return body, content_type
-
-
-def _send_receipt_via_smsby(*, subject, body, to_email, filename, content):
-    """Отправка письма с вложением через API sms.by (multipart/form-data)."""
-    fields = {
-        "token": settings.SMSBY_TOKEN,
-        "sender_email": settings.DEFAULT_FROM_EMAIL,
-        "sender_name": "Леонард",
-        "subject": subject,
-        "message": body,
-        "email": to_email,
-    }
-    data, content_type = _encode_multipart(
-        fields,
-        file_field="attachment",
-        filename=filename,
-        file_content=content,
-        file_mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-    request = urllib.request.Request(
-        settings.SMSBY_API_URL,
-        data=data,
-        headers={
-            "content-type": content_type,
-            "accept": "application/json",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=15) as response:
-        raw = response.read().decode("utf-8", errors="replace")
-    try:
-        result = json.loads(raw)
-    except ValueError:
-        logger.warning("sms.by вернул неожиданный ответ: %s", raw)
-        return False
-    if result.get("status") != "OK":
-        logger.warning("sms.by отклонил отправку: %s", raw)
-        return False
-    return True
-
-
 def send_order_receipt(order):
+    """Отправляет чек заказа на email покупателя через SMTP (Django EmailMessage)."""
     receipt = build_receipt(order)
     content = receipt.getvalue()
     subject = f"Чек по заказу #{order.id}"
@@ -360,24 +293,6 @@ def send_order_receipt(order):
     )
     filename = f"receipt_order_{order.id}.xlsx"
 
-    if settings.SMSBY_TOKEN:
-        try:
-            sent = _send_receipt_via_smsby(
-                subject=subject, body=body, to_email=order.email,
-                filename=filename, content=content,
-            )
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            logger.warning("sms.by вернул ошибку для заказа #%s: %s %s", order.id, exc.code, detail)
-            sent = False
-        except Exception:
-            logger.exception("Ошибка отправки через sms.by для заказа #%s", order.id)
-            sent = False
-        if not sent:
-            logger.warning("Не удалось отправить чек по заказу #%s на %s", order.id, order.email)
-        return sent
-
-    # Fallback: Django SMTP/filebased backend (локальная разработка).
     email = EmailMessage(
         subject=subject,
         body=body,
@@ -389,10 +304,16 @@ def send_order_receipt(order):
         content=content,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    sent = email.send(fail_silently=True)
+
+    try:
+        sent = email.send(fail_silently=False)
+    except Exception:
+        logger.exception("Ошибка отправки чека по заказу #%s на %s", order.id, order.email)
+        return False
+
     if not sent:
         logger.warning("Не удалось отправить чек по заказу #%s на %s", order.id, order.email)
-    return sent
+    return bool(sent)
 
 
 @api_view(["POST"])

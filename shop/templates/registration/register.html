@@ -3,27 +3,25 @@
 {% block title %}Регистрация — АртЛавка{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6 col-lg-5">
-            <div class="filter-panel p-4">
-                <h1 class="h3 fw-bold mb-1">Регистрация</h1>
-                <p class="text-muted mb-4">Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a></p>
+<div class="container auth-wrap py-5">
+    <div class="row justify-content-center w-100">
+        <div class="col-sm-10 col-md-7 col-lg-5">
+            <div class="auth-card">
+                <div class="text-center mb-4">
+                    <div class="auth-icon mx-auto mb-3">✦</div>
+                    <h1 class="h3 fw-bold mb-1">Создание аккаунта</h1>
+                    <p class="text-muted mb-0">Присоединяйтесь к АртЛавке</p>
+                </div>
 
-                {% if form.errors %}
+                {% if form.non_field_errors %}
                     <div class="alert alert-danger">
-                        {% for field in form %}
-                            {% for error in field.errors %}
-                                <div>{{ error }}</div>
-                            {% endfor %}
-                        {% endfor %}
                         {% for error in form.non_field_errors %}
                             <div>{{ error }}</div>
                         {% endfor %}
                     </div>
                 {% endif %}
 
-                <form method="post">
+                <form method="post" novalidate>
                     {% csrf_token %}
                     {% for field in form %}
                         <div class="mb-3">
@@ -35,14 +33,22 @@
                                 id="{{ field.id_for_label }}"
                                 {% if field.value %}value="{{ field.value }}"{% endif %}
                                 autocomplete="off"
+                                required
                             >
+                            {% for error in field.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
                             {% if field.help_text %}
-                                <div class="form-text text-muted">{{ field.help_text }}</div>
+                                <div class="form-text text-muted">{{ field.help_text|safe }}</div>
                             {% endif %}
                         </div>
                     {% endfor %}
                     <button class="btn btn-primary w-100 mt-2" type="submit">Создать аккаунт</button>
                 </form>
+
+                <p class="text-center text-muted mt-4 mb-0">
+                    Уже есть аккаунт? <a class="fw-semibold" href="{% url 'login' %}">Войти</a>
+                </p>
             </div>
         </div>
     </div>
